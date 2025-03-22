@@ -4,7 +4,13 @@
 
 # Clone Code Credit : YT - @Tech_VJ / TG - @VJ_Bots / GitHub - @VJBots
 
-import sys, glob, importlib, logging, logging.config, pytz, asyncio
+import sys
+import glob
+import importlib
+import logging
+import logging.config
+import pytz
+import asyncio
 from pathlib import Path
 
 # Get logging configurations
@@ -19,13 +25,13 @@ logging.basicConfig(
 logging.getLogger("aiohttp").setLevel(logging.ERROR)
 logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
 
-from pyrogram import Client, idle 
+from pyrogram import Client, idle
 from database.users_chats_db import db
 from info import *
 from utils import temp
 from typing import Union, Optional, AsyncGenerator
-from Script import script 
-from datetime import date, datetime 
+from Script import script
+from datetime import date, datetime
 from aiohttp import web
 from plugins import web_server
 
@@ -35,15 +41,14 @@ from TechVJ.bot.clients import initialize_clients
 
 ppath = "plugins/*.py"
 files = glob.glob(ppath)
-TechVJBot.start()
-loop = asyncio.get_event_loop()
-
 
 async def start():
     print('\n')
-    print('Initalizing Your Bot')
+    print('Initializing Your Bot')
     bot_info = await TechVJBot.get_me()
     await initialize_clients()
+
+    # Load plugins dynamically
     for name in files:
         with open(name) as a:
             patt = Path(a.name)
@@ -55,28 +60,38 @@ async def start():
             spec.loader.exec_module(load)
             sys.modules["plugins." + plugin_name] = load
             print("Tech VJ Imported => " + plugin_name)
+
+    # Start ping server if on Heroku
     if ON_HEROKU:
         asyncio.create_task(ping_server())
+
+    # Set bot information
     me = await TechVJBot.get_me()
     temp.BOT = TechVJBot
     temp.ME = me.id
     temp.U_NAME = me.username
     temp.B_NAME = me.first_name
+
+    # Send restart message to log channel
     tz = pytz.timezone('Asia/Kolkata')
     today = date.today()
     now = datetime.now(tz)
     time = now.strftime("%H:%M:%S %p")
     await TechVJBot.send_message(chat_id=LOG_CHANNEL, text=script.RESTART_TXT.format(today, time))
+
+    # Start web server
     app = web.AppRunner(await web_server())
     await app.setup()
     bind_address = "0.0.0.0"
     await web.TCPSite(app, bind_address, PORT).start()
+
+    # Keep the bot running
     await idle()
 
 
 if __name__ == '__main__':
     try:
-        loop.run_until_complete(start())
+        # Use asyncio.run() to manage the event loop
+        asyncio.run(start())
     except KeyboardInterrupt:
         logging.info('Service Stopped Bye 👋')
-
